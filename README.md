@@ -34,6 +34,20 @@ The goal is to run the production controller code on a PC, feed it real CAN bus 
 
 ---
 
+## Controller pipeline
+
+Each control cycle runs through five stages:
+
+1. **Signal filtering** — raw CAN values are cleaned of noise before any calculations
+2. **State estimation** — slip between front and rear axles, yaw error, and available tire grip are derived from the filtered signals
+3. **Lock calculation** — proactive components (speed, throttle, cornering) are summed into a base lock demand
+4. **Modifiers** — the demand is scaled down for parking maneuvers, heavy braking, or low grip conditions; reactive slip adds directly on top when the axle difference exceeds the threshold
+5. **Safety overrides** — launch control and kickdown force 100%; ABS fades the lock smoothly to a floor value; a slew rate limiter ramps engagement up fast and release slow
+
+The output of each cycle is `targetLockPct` — a value from 0 to 100% sent to the Haldex coupling.
+
+---
+
 ## Project structure
 
 ```
