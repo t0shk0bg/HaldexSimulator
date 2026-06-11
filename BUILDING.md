@@ -3,64 +3,64 @@
 ## Prerequisites
 
 ### Windows
-- **CMake ≥ 3.16** — [cmake.org/download](https://cmake.org/download/) — при инсталация избери "Add CMake to the system PATH"
-- **Git** — [git-scm.com](https://git-scm.com/) — нужен за сваляне на GoogleTest
-- **MSVC** — Visual Studio 2019 или 2022 с "Desktop development with C++" workload (или Build Tools)
+- **CMake ≥ 3.16** — [cmake.org/download](https://cmake.org/download/) — during installation select "Add CMake to the system PATH"
+- **Git** — [git-scm.com](https://git-scm.com/) — required to download GoogleTest
+- **MSVC** — Visual Studio 2019 or 2022 with the "Desktop development with C++" workload (or Build Tools)
 
 ### Mac
-- **Xcode Command Line Tools** — дава clang, make и git наведнъж:
+- **Xcode Command Line Tools** — installs clang, make and git in one step:
   ```sh
   xcode-select --install
   ```
-- **CMake ≥ 3.16** — най-лесно през Homebrew:
+- **CMake ≥ 3.16** — easiest via Homebrew:
   ```sh
   brew install cmake
   ```
 
-Провери дали cmake е в PATH:
+Verify cmake is on your PATH:
 ```
 cmake --version
 ```
 
 ---
 
-## Build от терминал
+## Build from terminal
 
 ### Windows
 ```bat
 scripts\build.bat
 ```
-Или ръчно:
+Or manually:
 ```bat
 cmake -S . -B build
 cmake --build build --config Release
 ```
-Изпълнимият файл: `build\bin\Release\haldex.exe`
+Output binary: `build\bin\Release\haldex.exe`
 
 ### Mac
 ```sh
 scripts/build.sh
 ```
-Или ръчно:
+Or manually:
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
-Изпълнимият файл: `build/bin/haldex`
+Output binary: `build/bin/haldex`
 
 ---
 
-## Build от VSCode
+## Build from VSCode
 
-Отвори папката, след което:
+Open the project folder, then:
 - **Ctrl+Shift+B** — Build
-- **Terminal → Run Task → Run Tests** — unit тестове
+- **Terminal → Run Task → Run Tests** — run unit tests
 
-За debug: F5 → избери "Run HaldexController (Windows)" или "Run HaldexController (Mac)".
+For debugging: press F5 and select "Run HaldexController (Windows)" or "Run HaldexController (Mac)".
 
 ---
 
-## Тестове
+## Tests
 
 ### Windows
 ```bat
