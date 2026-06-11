@@ -33,14 +33,20 @@ static float calculateKinematicExpectedYaw(float currentSteerAngleRad, float V, 
     return expectedYawRadS * std::max(0.1f, yawGain) * std::max(0.1f, loadTransfer);
 }
 
-static bool validateChassisResponse(float filteredSteerRateRadS, float expectedYawRadS, float realYawRadS, FilterState& fState, float V, float dt) {
+static void updateLaggedExpectedYaw(FilterState& fState, float expectedYawRadS, float V, float dt) {
     if (V < 4.16f) {
-        return true;
+        return; // Freeze the lag at low speed (matches the early-return behaviour below)
     }
 
     float tau = clamp(activeConfig().chassisLagMaxS - (V * activeConfig().chassisLagScale), activeConfig().chassisLagMinS, activeConfig().chassisLagMaxS);
     float alphaLag = dt / (tau + dt);
     fState.laggedExpectedYawRadS += alphaLag * (expectedYawRadS - fState.laggedExpectedYawRadS);
+}
+
+static bool validateChassisResponse(float filteredSteerRateRadS, float realYawRadS, const FilterState& fState, float V) {
+    if (V < 4.16f) {
+        return true;
+    }
 
     float realYawRateAbs = std::abs(realYawRadS);
     float laggedExpectedAbs = std::abs(fState.laggedExpectedYawRadS);
@@ -189,9 +195,11 @@ void estimateSteeringAndYaw(const SignalProcessingLayer& processed, FilterState&
     bool steeringTrigger = std::abs(state.steeringRateRadS) > dynamicThresholdRadS;
 
     float expectedYawRadS = calculateKinematicExpectedYaw(processed.steeringAngleRad, V, rawCanInput.longitudinalAccelG);
-    bool chassisOk = validateChassisResponse(state.steeringRateRadS, expectedYawRadS, processed.yawRateRadS, fState, V, dt);
 
+    updateLaggedExpectedYaw(fState, expectedYawRadS, V, dt);
     state.chassisSlipDeviationRadS = calculateChassisSlipDeviation(fState.laggedExpectedYawRadS, processed.yawRateRadS, V, processed.steeringAngleRad);
+    bool chassisOk = validateChassisResponse(state.steeringRateRadS, processed.yawRateRadS, fState, V);
+
     state.cornerEntryPredicted = steeringTrigger && chassisOk;
 }
 

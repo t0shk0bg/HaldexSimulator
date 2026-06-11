@@ -144,3 +144,20 @@ TEST_F(StateEstimationTest, ChassisSlipDeviationIsSymmetricLeftRight) {
 
     EXPECT_NEAR(deviationRight, deviationLeft, 0.001f);
 }
+
+// Regression: validateChassisResponse must see the CURRENT-cycle oversteer
+// (fresh chassisSlipDeviationRadS), not the previous cycle's value.
+// Before the fix the deviation was read one cycle late: with a zeroed filterState
+// the stale value was 0 (not oversteer), so the slalom branch failed upperBound and
+// cornerEntryPredicted came out false. With the fix the fresh oversteer is seen,
+// the escOff oversteer branch returns directionOk, and cornerEntryPredicted is true.
+TEST_F(StateEstimationTest, OversteerDetectionUsesCurrentCycleDeviation) {
+    rawCanInput.escOff = true;
+    processedSignalsLayer.steeringAngleRad = 0.3f; // → steeringTrigger + slalom transition
+    processedSignalsLayer.yawRateRadS = 0.5f;      // real yaw >> lagged expected → oversteer this cycle
+    // filterState starts zeroed → previous-cycle chassisSlipDeviationRadS = 0 (NOT oversteer)
+    estimateSteeringAndYaw(processedSignalsLayer, filterState, stateEstimationLayer, 15.0f, 0.01f);
+
+    EXPECT_LT(stateEstimationLayer.chassisSlipDeviationRadS, -0.0698f); // sanity: oversteer this cycle
+    EXPECT_TRUE(stateEstimationLayer.cornerEntryPredicted);            // would be false on the stale read
+}
