@@ -1,0 +1,48 @@
+﻿# Build directories
+build/
+out/
+cmake-build-*/
+
+# Compiled binaries and object files
+*.exe
+*.dll
+*.lib
+*.a
+*.o
+*.obj
+*.pdb
+*.ilk
+*.exp
+
+# CMake generated
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+_deps/
+install_manifest.txt
+
+# Visual Studio
+.vs/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.suo
+*.user
+*.VC.db
+*.VC.opendb
+
+# VS Code
+.vscode/
+
+# Clang
+*.clangd/
+
+# Testing artifacts
+Testing/
+*.xml
+
+# OS
+Thumbs.db
+.DS_Store
