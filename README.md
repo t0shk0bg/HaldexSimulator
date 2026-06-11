@@ -115,18 +115,31 @@ calib.configs[SPORT]  = { ... };
 setupHaldexControl({ calib.configs[NORMAL], calib.configs[SPORT] });
 ```
 
-Key parameter groups:
+**`HaldexControlConfig`** — controller behaviour, one instance per drive mode:
 
-| Group                  | Examples                                                  |
-|------------------------|-----------------------------------------------------------|
-| Base lock              | `baseLockLowSpeed`, `baseLockHighSpeedCutMps`             |
-| Proactive / throttle   | `throttleProactiveGain`, `maxFeedforwardLockCap`          |
-| Reactive slip          | `slipReactiveGain`, `slipTriggerThresholdMps`             |
-| Lateral dynamics       | `chassisBalanceGain`, `balanceUndersteerThresholdRadS`    |
-| Slew rate              | `maxLockSlewRateUp`, `maxLockSlewRateDown`                |
-| ABS behaviour          | `absMaxFloorRatio`, `absFadeTauS`                         |
+| Group                  | Examples                                                      |
+|------------------------|---------------------------------------------------------------|
+| Base lock              | `baseLockLowSpeed`, `baseLockHighSpeedCutMps`                 |
+| Proactive / throttle   | `throttleProactiveGain`, `maxFeedforwardLockCap`              |
+| Reactive slip          | `slipReactiveGain`, `slipTriggerThresholdMps`                 |
+| Lateral dynamics       | `chassisBalanceGain`, `balanceUndersteerThresholdRadS`        |
+| Slew rate              | `maxLockSlewRateUp`, `maxLockSlewRateDown`                    |
+| ABS behaviour          | `absMaxFloorRatio`, `absFadeTauS`                             |
 | Parking / low speed    | `steeringReductionMaxAngleRad`, `parkingDeactivationAngleRad` |
-| Signal filtering       | `signalFilterTimeConstant`, `steeringRateFilterTime`      |
+| Signal filtering       | `signalFilterTimeConstant`, `steeringRateFilterTime`          |
+
+**`VehiclePhysicsConfig`** — vehicle-specific constants, set once per platform:
+
+| Field               | Description                                          |
+|---------------------|------------------------------------------------------|
+| `massKg`            | Vehicle mass — affects load transfer calculations    |
+| `engineMaxTorque`   | Peak engine torque, used to normalize feedforward    |
+| `gearRatios[8]`     | Gear ratios 1–7, used to compute wheel torque        |
+| `finalDrive1/2`     | Front and rear final drive ratios                    |
+| `wheelbase`         | Axle distance — used in the kinematic yaw model      |
+| `tireMaxLateralG`   | Friction ellipse lateral limit                       |
+| `tireMaxLongG`      | Friction ellipse longitudinal limit                  |
+| `drivetrainEfficiency` | Gearbox + driveshaft losses                       |
 
 ---
 
