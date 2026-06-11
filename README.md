@@ -6,6 +6,12 @@ The goal is to run the production controller code on a PC, feed it real CAN bus 
 
 ---
 
+## Target platform
+
+> **Note.** This controller is developed for the **Continental MK100 IPB** ABS/ESC module.
+
+---
+
 ## How it works
 
 ```
