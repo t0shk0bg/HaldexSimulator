@@ -130,6 +130,15 @@ setupHaldexControl({ calib.configs[NORMAL], calib.configs[SPORT] });
 
 **`VehiclePhysicsConfig`** — vehicle-specific constants, set once per platform:
 
+```cpp
+VehiclePhysicsConfig phys;
+phys.massKg           = 1550.0f;
+phys.engineMaxTorque  = 400.0f;
+phys.wheelbase        = 2.63f;
+// ... other fields
+setupVehiclePhysics(phys);
+```
+
 | Field               | Description                                          |
 |---------------------|------------------------------------------------------|
 | `massKg`            | Vehicle mass — affects load transfer calculations    |
