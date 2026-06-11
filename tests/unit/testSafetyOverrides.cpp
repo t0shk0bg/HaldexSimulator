@@ -77,6 +77,34 @@ TEST_F(SafetyOverridesTest, KickdownAlwaysTriggersFullLock) {
     EXPECT_TRUE(result);
 }
 
+// Regression: kickdown must not bypass the ABS holdoff during an inter-pulse gap.
+// While the holdoff keeps absBrakeEventActive = true, a momentary absActive = false
+// (gap between ABS pulses) must NOT let kickdown force 100% and slew-ratchet the output.
+TEST_F(SafetyOverridesTest, KickdownDoesNotBypassAbsHoldoffDuringPulseGap) {
+    stateEstimationLayer = StateEstimationLayer{};
+    rawCanInput.gear = 2;
+    rawCanInput.vehicleSpeedKmh = 50.0f;
+    rawCanInput.brakePressure = 60.0f; // hard braking → normal lock fully attenuated
+    rawCanInput.kickdown = true;
+    // Equal wheel speeds → no reactive slip contribution
+    rawCanInput.wheelSpeedFl = rawCanInput.wheelSpeedFr = 50.0f;
+    rawCanInput.wheelSpeedRl = rawCanInput.wheelSpeedRr = 50.0f;
+
+    // Cycle 1: ABS pulse ON → establishes the brake event (absBrakeEventActive = true)
+    rawCanInput.absActive = true;
+    haldexControllerExecutionTask(dt);
+
+    // Cycles 2..6: inter-pulse gap (ABS momentarily off) with kickdown held.
+    // 5 * 10ms = 50ms < 300ms holdoff → absBrakeEventActive stays true → kickdown stays gated.
+    rawCanInput.absActive = false;
+    for (int i = 0; i < 5; i++) {
+        haldexControllerExecutionTask(dt);
+    }
+
+    EXPECT_TRUE(filterState.absBrakeEventActive); // still inside the holdoff window
+    EXPECT_LT(finalHaldexOutput.targetLockPct, 1.0f); // no ratchet toward 100%
+}
+
 // launchFlagHoldoffS = 0.10s: over 5 cycles (50ms) of packet loss launch stays active
 TEST_F(SafetyOverridesTest, LaunchFlagHoldoffProtectsAgainstPacketLoss) {
     processedSignalsLayer.normalizedThrottle = 0.90f;

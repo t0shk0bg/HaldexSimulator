@@ -499,7 +499,7 @@ void haldexControllerExecutionTask(float dtSeconds) {
 
     float rawTargetLock = clamp(lockAccumulator, 0.0f, 100.0f) * (1.0f - normalAttenuation);
 
-    if (evaluateLaunchAndKickdown(V, safeDt) && !rawCanInput.absActive) {
+    if (evaluateLaunchAndKickdown(V, safeDt) && !filterState.absBrakeEventActive) {
         rawTargetLock = 100.0f;
     }
 
