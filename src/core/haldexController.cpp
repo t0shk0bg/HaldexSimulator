@@ -15,6 +15,10 @@ HaldexCommandOutput finalHaldexOutput;
 // ----------------------------------------------------------------------------
 // Internal helpers (file-local)
 // ----------------------------------------------------------------------------
+// Minimum speed [m/s = 15 km/h] below which the kinematic yaw model is unreliable
+// (noisy sensors, small angles); chassis lag tracking and validation are disabled.
+static constexpr float kChassisDynamicsMinSpeedMps = 4.16f;
+
 static float calculateChassisSlipDeviation(float laggedExpectedYawRadS, float realYawRadS, float vehicleSpeedMps, float steeringAngleRad) {
     if (std::abs(steeringAngleRad) <= 0.02f || vehicleSpeedMps <= 5.5f) {
         return 0.0f;
@@ -34,8 +38,8 @@ static float calculateKinematicExpectedYaw(float currentSteerAngleRad, float V, 
 }
 
 static void updateLaggedExpectedYaw(FilterState& fState, float expectedYawRadS, float V, float dt) {
-    if (V < 4.16f) {
-        return; // Freeze the lag at low speed (matches the early-return behaviour below)
+    if (V < kChassisDynamicsMinSpeedMps) {
+        return;
     }
 
     float tau = clamp(activeConfig().chassisLagMaxS - (V * activeConfig().chassisLagScale), activeConfig().chassisLagMinS, activeConfig().chassisLagMaxS);
@@ -44,7 +48,7 @@ static void updateLaggedExpectedYaw(FilterState& fState, float expectedYawRadS, 
 }
 
 static bool validateChassisResponse(float filteredSteerRateRadS, float realYawRadS, const FilterState& fState, float V) {
-    if (V < 4.16f) {
+    if (V < kChassisDynamicsMinSpeedMps) {
         return true;
     }
 
