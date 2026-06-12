@@ -47,7 +47,7 @@ static void updateLaggedExpectedYaw(FilterState& fState, float expectedYawRadS, 
     fState.laggedExpectedYawRadS += alphaLag * (expectedYawRadS - fState.laggedExpectedYawRadS);
 }
 
-static bool validateChassisResponse(float filteredSteerRateRadS, float realYawRadS, const FilterState& fState, float V) {
+static bool validateChassisResponse(float filteredSteerRateRadS, float realYawRadS, const FilterState& fState, float V, float chassisSlipDeviationRadS, bool escOff) {
     if (V < kChassisDynamicsMinSpeedMps) {
         return true;
     }
@@ -62,9 +62,9 @@ static bool validateChassisResponse(float filteredSteerRateRadS, float realYawRa
     bool lowerBound = realYawRateAbs > (laggedExpectedAbs * 0.40f);
     bool upperBound = realYawRateAbs < (laggedExpectedAbs * 1.35f);
 
-    bool isOversteering = isOversteerActive(stateEstimationLayer.chassisSlipDeviationRadS);
+    bool isOversteering = isOversteerActive(chassisSlipDeviationRadS);
 
-    if (isOversteering && rawCanInput.escOff) {
+    if (isOversteering && escOff) {
         return directionOk;
     }
 
@@ -201,18 +201,18 @@ float calculateFilteredYawAccel(float currentYawRateRadS, FilterState& fState, f
 // ----------------------------------------------------------------------------
 // Dynamic state estimation
 // ----------------------------------------------------------------------------
-void estimateSteeringAndYaw(const SignalProcessingLayer& processed, FilterState& fState, StateEstimationLayer& state, float V, float dt) {
+void estimateSteeringAndYaw(const CanInputLayer& input, const SignalProcessingLayer& processed, FilterState& fState, StateEstimationLayer& state, float V, float dt) {
     state.steeringRateRadS = calculateFilteredSteeringRate(processed.steeringAngleRad, fState, dt);
     state.yawAccelRadS2 = calculateFilteredYawAccel(processed.yawRateRadS, fState, dt);
 
     float dynamicThresholdRadS = clamp(2.44f - (V * 0.043f), 1.04f, 2.44f);
     bool steeringTrigger = std::abs(state.steeringRateRadS) > dynamicThresholdRadS;
 
-    float expectedYawRadS = calculateKinematicExpectedYaw(processed.steeringAngleRad, V, rawCanInput.longitudinalAccelG);
+    float expectedYawRadS = calculateKinematicExpectedYaw(processed.steeringAngleRad, V, input.longitudinalAccelG);
 
     updateLaggedExpectedYaw(fState, expectedYawRadS, V, dt);
     state.chassisSlipDeviationRadS = calculateChassisSlipDeviation(fState.laggedExpectedYawRadS, processed.yawRateRadS, V, processed.steeringAngleRad);
-    bool chassisOk = validateChassisResponse(state.steeringRateRadS, processed.yawRateRadS, fState, V);
+    bool chassisOk = validateChassisResponse(state.steeringRateRadS, processed.yawRateRadS, fState, V, state.chassisSlipDeviationRadS, input.escOff);
 
     // Confidence in the kinematic steering-geometry model, used to fade slip compensation.
     // Below the chassis-dynamics speed the lagged yaw is frozen, so trust geometry fully.
@@ -330,8 +330,8 @@ void estimateLateralDynamics(const CanInputLayer& input, const SignalProcessingL
 // ----------------------------------------------------------------------------
 // Lock calculation
 // ----------------------------------------------------------------------------
-float calculateOutputAttenuation(const CanInputLayer& input) {
-    return clamp((input.brakePressure - activeConfig().brakeAttenuationStartBar) / activeConfig().brakeAttenuationRangeBar, 0.0f, 1.0f);
+float calculateOutputAttenuation(float brakePressureBar) {
+    return clamp((brakePressureBar - activeConfig().brakeAttenuationStartBar) / activeConfig().brakeAttenuationRangeBar, 0.0f, 1.0f);
 }
 
 float calculateBaseSpeedLock(float speedMps) {
@@ -496,7 +496,7 @@ float prepareCycleMetrics(float dtSeconds, float& safeDt, float& normalAttenuati
     safeDt = clamp(dtSeconds, 0.001f, 0.050f);
     updateDriveModeFromCan(rawCanInput);
     processSignalsFiltered(rawCanInput, processedSignalsLayer, filterState, safeDt);
-    normalAttenuation = calculateOutputAttenuation(rawCanInput);
+    normalAttenuation = calculateOutputAttenuation(rawCanInput.brakePressure);
 
     return clamp(processedSignalsLayer.vehicleSpeedMps, 0.05f, 100.0f);
 }
@@ -508,7 +508,7 @@ void haldexControllerExecutionTask(float dtSeconds) {
     float lockAccumulator = 0.0f;
 
     if (!rawCanInput.reverseGear) {
-        estimateSteeringAndYaw(processedSignalsLayer, filterState, stateEstimationLayer, V, safeDt);
+        estimateSteeringAndYaw(rawCanInput, processedSignalsLayer, filterState, stateEstimationLayer, V, safeDt);
         estimateWheelTorque(rawCanInput, stateEstimationLayer);
         estimateReactiveSlip(rawCanInput, processedSignalsLayer, stateEstimationLayer, V);
         estimateLateralDynamics(rawCanInput, processedSignalsLayer, stateEstimationLayer, V);

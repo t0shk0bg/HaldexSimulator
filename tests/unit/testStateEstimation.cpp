@@ -145,7 +145,7 @@ TEST_F(StateEstimationTest, CompensationFallsBackOnOppositeYaw) {
     processedSignalsLayer.steeringAngleRad = 3.0f; // positive → expected yaw positive
     processedSignalsLayer.yawRateRadS = -0.8f;     // car yaws the other way
     filterState.laggedExpectedYawRadS = 0.5f;      // positive lagged reference
-    estimateSteeringAndYaw(processedSignalsLayer, filterState, stateEstimationLayer, 15.0f, 0.01f);
+    estimateSteeringAndYaw(rawCanInput, processedSignalsLayer, filterState, stateEstimationLayer, 15.0f, 0.01f);
     EXPECT_FLOAT_EQ(stateEstimationLayer.kinematicYawConfidence, activeConfig().slipCompYawConfidenceFloor);
 }
 
@@ -154,7 +154,7 @@ TEST_F(StateEstimationTest, ConfidenceOneAtLowSpeed) {
     processedSignalsLayer.steeringAngleRad = 3.0f;
     processedSignalsLayer.yawRateRadS = -0.8f; // would yield the floor if it were computed
     filterState.laggedExpectedYawRadS = 0.5f;
-    estimateSteeringAndYaw(processedSignalsLayer, filterState, stateEstimationLayer, 3.0f, 0.01f); // V < 4.16
+    estimateSteeringAndYaw(rawCanInput, processedSignalsLayer, filterState, stateEstimationLayer, 3.0f, 0.01f); // V < 4.16
     EXPECT_FLOAT_EQ(stateEstimationLayer.kinematicYawConfidence, 1.0f);
 }
 
@@ -238,7 +238,7 @@ TEST_F(StateEstimationTest, ChassisSlipDeviationIsSymmetricLeftRight) {
     processedSignalsLayer.steeringAngleRad = 0.3f;
     processedSignalsLayer.yawRateRadS = 0.5f;
     filterState.laggedExpectedYawRadS = 0.5f;
-    estimateSteeringAndYaw(processedSignalsLayer, filterState,
+    estimateSteeringAndYaw(rawCanInput, processedSignalsLayer, filterState,
                            stateEstimationLayer, 15.0f, 0.01f);
     float deviationRight = stateEstimationLayer.chassisSlipDeviationRadS;
 
@@ -249,7 +249,7 @@ TEST_F(StateEstimationTest, ChassisSlipDeviationIsSymmetricLeftRight) {
     processedSignalsLayer.steeringAngleRad = -0.3f;
     processedSignalsLayer.yawRateRadS = -0.5f;
     filterState.laggedExpectedYawRadS = -0.5f;
-    estimateSteeringAndYaw(processedSignalsLayer, filterState,
+    estimateSteeringAndYaw(rawCanInput, processedSignalsLayer, filterState,
                            stateEstimationLayer, 15.0f, 0.01f);
     float deviationLeft = stateEstimationLayer.chassisSlipDeviationRadS;
 
@@ -267,7 +267,7 @@ TEST_F(StateEstimationTest, OversteerDetectionUsesCurrentCycleDeviation) {
     processedSignalsLayer.steeringAngleRad = 0.3f; // → steeringTrigger + slalom transition
     processedSignalsLayer.yawRateRadS = 0.5f;      // real yaw >> lagged expected → oversteer this cycle
     // filterState starts zeroed → previous-cycle chassisSlipDeviationRadS = 0 (NOT oversteer)
-    estimateSteeringAndYaw(processedSignalsLayer, filterState, stateEstimationLayer, 15.0f, 0.01f);
+    estimateSteeringAndYaw(rawCanInput, processedSignalsLayer, filterState, stateEstimationLayer, 15.0f, 0.01f);
 
     EXPECT_LT(stateEstimationLayer.chassisSlipDeviationRadS, -0.0698f); // sanity: oversteer this cycle
     EXPECT_TRUE(stateEstimationLayer.cornerEntryPredicted);            // would be false on the stale read

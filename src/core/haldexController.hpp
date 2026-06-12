@@ -56,7 +56,7 @@ float calculateFilteredYawAccel(float currentYawRateRadS, FilterState& fState, f
 // ----------------------------------------------------------------------------
 // Dynamic state estimation
 // ----------------------------------------------------------------------------
-void estimateSteeringAndYaw(const SignalProcessingLayer& processed, FilterState& fState, StateEstimationLayer& state, float V, float dt);
+void estimateSteeringAndYaw(const CanInputLayer& input, const SignalProcessingLayer& processed, FilterState& fState, StateEstimationLayer& state, float V, float dt);
 void estimateWheelTorque(const CanInputLayer& input, StateEstimationLayer& state);
 void estimateReactiveSlip(const CanInputLayer& input, const SignalProcessingLayer& processed, StateEstimationLayer& state, float vehicleSpeedMps);
 void estimateLateralDynamics(const CanInputLayer& input, const SignalProcessingLayer& processed, StateEstimationLayer& state, float vehicleSpeedMps);
@@ -72,7 +72,7 @@ float calculateBaseSpeedLock(float speedMps);
 float calculateFeedforwardTorqueLock(float wheelTorqueNm, float requestedTorqueNm, float actualTorqueSumNm);
 float calculateLateralChassisBalanceAdjustment(float slipDeviationRadS, bool escOff, float rearOverrunSlipMps);
 float calculateParkingDegradation(float V, float steeringAngleRad);
-float calculateOutputAttenuation(const CanInputLayer& input);
+float calculateOutputAttenuation(float brakePressureBar);
 float calculatePredictiveLocks(float V);
 
 // ----------------------------------------------------------------------------

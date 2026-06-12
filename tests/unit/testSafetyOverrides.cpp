@@ -147,15 +147,15 @@ TEST_F(SafetyOverridesTest, LaunchBlockedWhenSteeringExceedsThreshold) {
 // brakePressure < brakeAttenuationStartBar (15 bar) → attenuation = 0.0
 TEST_F(SafetyOverridesTest, BrakeAttenuationZeroBelowStartPressure) {
     rawCanInput.brakePressure = 10.0f;
-    EXPECT_FLOAT_EQ(calculateOutputAttenuation(rawCanInput), 0.0f);
+    EXPECT_FLOAT_EQ(calculateOutputAttenuation(rawCanInput.brakePressure), 0.0f);
 
     // Exactly at the threshold → (15-15)/45 = 0
     rawCanInput.brakePressure = 15.0f;
-    EXPECT_FLOAT_EQ(calculateOutputAttenuation(rawCanInput), 0.0f);
+    EXPECT_FLOAT_EQ(calculateOutputAttenuation(rawCanInput.brakePressure), 0.0f);
 
     // Above the threshold → (60-15)/45 = 1.0
     rawCanInput.brakePressure = 60.0f;
-    EXPECT_FLOAT_EQ(calculateOutputAttenuation(rawCanInput), 1.0f);
+    EXPECT_FLOAT_EQ(calculateOutputAttenuation(rawCanInput.brakePressure), 1.0f);
 }
 
 // Reverse, no slip, no lateral g → lock must be 0% (no feedforward, no base speed)
