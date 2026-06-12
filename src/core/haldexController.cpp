@@ -188,12 +188,22 @@ float calculateFilteredSteeringRate(float currentAngleRad, FilterState& fState, 
     return fState.filteredSteeringRateRadS;
 }
 
+float calculateFilteredYawAccel(float currentYawRateRadS, FilterState& fState, float dt) {
+    float rawAccelRadS2 = (currentYawRateRadS - fState.previousYawRateRadS) / dt;
+    fState.previousYawRateRadS = currentYawRateRadS;
+
+    float alpha = dt / (activeConfig().yawAccelFilterTime + dt);
+    fState.filteredYawAccelRadS2 += alpha * (rawAccelRadS2 - fState.filteredYawAccelRadS2);
+
+    return fState.filteredYawAccelRadS2;
+}
+
 // ----------------------------------------------------------------------------
 // Dynamic state estimation
 // ----------------------------------------------------------------------------
 void estimateSteeringAndYaw(const SignalProcessingLayer& processed, FilterState& fState, StateEstimationLayer& state, float V, float dt) {
     state.steeringRateRadS = calculateFilteredSteeringRate(processed.steeringAngleRad, fState, dt);
-    fState.previousYawRateRadS = processed.yawRateRadS;
+    state.yawAccelRadS2 = calculateFilteredYawAccel(processed.yawRateRadS, fState, dt);
 
     float dynamicThresholdRadS = clamp(2.44f - (V * 0.043f), 1.04f, 2.44f);
     bool steeringTrigger = std::abs(state.steeringRateRadS) > dynamicThresholdRadS;
@@ -213,7 +223,7 @@ void estimateWheelTorque(const CanInputLayer& input, const VehiclePhysicsConfig&
         return;
     }
 
-    float iGear = (input.gear >= 1 && input.gear <= 7) ? physCfg.gearRatios[input.gear] : physCfg.gearRatios[7];
+    float iGear = physCfg.gearRatios[input.gear];
     float iFinal = (input.gear <= 4) ? physCfg.finalDrive1 : physCfg.finalDrive2;
     state.anticipatedWheelTorqueNm = clamp(input.actualTorqueSumNm, 0.0f, physCfg.engineMaxTorque) * iGear * iFinal * physCfg.drivetrainEfficiency;
 }

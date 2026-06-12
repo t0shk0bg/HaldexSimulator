@@ -47,6 +47,7 @@ void updateDriveModeFromCan(const CanInputLayer& input);
 // ----------------------------------------------------------------------------
 void processSignalsFiltered(const CanInputLayer& input, SignalProcessingLayer& processed, FilterState& fState, float dt);
 float calculateFilteredSteeringRate(float currentAngleRad, FilterState& fState, float dt);
+float calculateFilteredYawAccel(float currentYawRateRadS, FilterState& fState, float dt);
 
 // ----------------------------------------------------------------------------
 // Dynamic state estimation

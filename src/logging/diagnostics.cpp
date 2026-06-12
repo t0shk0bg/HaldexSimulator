@@ -42,6 +42,7 @@ void printActiveControlConfig() {
     printf("  %-45s : %.3f s\n", "Signal Filter Time Constant (V, Steer)", cfg.signalFilterTimeConstant);
     printf("  %-45s : %.3f s\n", "Wheel Oscillation Filter Time Constant", cfg.wheelOscillationFilterTime);
     printf("  %-45s : %.3f s\n", "Steering Rate Filter Time Constant", cfg.steeringRateFilterTime);
+    printf("  %-45s : %.3f s\n", "Yaw Accel Filter Time Constant", cfg.yawAccelFilterTime);
     printf("----------------------------------------------------------------------\n");
     printf("  %-45s : %.4f\n", "Yaw Gain Linear Coeff", cfg.yawGainLinearCoeff);
     printf("  %-45s : %.5f\n", "Yaw Gain Quadratic Coeff", cfg.yawGainQuadraticCoeff);

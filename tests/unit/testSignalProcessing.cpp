@@ -84,6 +84,31 @@ TEST_F(SignalProcessingTest, SteeringRateFilterSmoothsOutput) {
     EXPECT_GT(std::abs(filteredRate), 0.0f);
 }
 
+// Yaw acceleration = filtered (current - previous) / dt.
+// A step in yaw rate yields a positive accel, smoothed below the raw derivative.
+// Also locks in that previousYawRateRadS is now consumed (no longer a dead field).
+TEST_F(SignalProcessingTest, YawAccelFilterSmoothsOutput) {
+    // previousYawRateRadS starts at 0 → raw accel = (0.5 - 0) / 0.010 = 50 rad/s²
+    // alpha = dt / (tau + dt) = 0.010 / 0.022 = 0.4545 → filtered = 22.7 rad/s² < 50
+    float yawRateRadS = 0.5f;
+    float filteredAccel = calculateFilteredYawAccel(yawRateRadS, filterState, dt);
+    EXPECT_GT(filteredAccel, 0.0f);
+    EXPECT_LT(filteredAccel, 50.0f);
+    // The previous-yaw snapshot must now hold the consumed value
+    EXPECT_FLOAT_EQ(filterState.previousYawRateRadS, yawRateRadS);
+}
+
+// A constant yaw rate (no change between cycles) drives the filtered accel toward 0
+TEST_F(SignalProcessingTest, YawAccelDecaysToZeroAtConstantYaw) {
+    // Prime the filter with a step, then hold the yaw rate constant
+    calculateFilteredYawAccel(0.5f, filterState, dt);
+    float last = 1e9f;
+    for (int i = 0; i < 50; i++) {
+        last = calculateFilteredYawAccel(0.5f, filterState, dt);
+    }
+    EXPECT_NEAR(last, 0.0f, 0.01f);
+}
+
 // throttlePct / 100 → normalizedThrottle, clamp [0.0, 1.0]
 TEST_F(SignalProcessingTest, ThrottleNormalizationClampsTo0_1) {
     rawCanInput.vehicleSpeedKmh = 40.0f;

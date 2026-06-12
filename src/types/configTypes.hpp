@@ -167,6 +167,12 @@ struct HaldexControlConfig {
     // Provides a smooth and stable signal for the turning rate.
     float steeringRateFilterTime = 0.020f;
 
+    // Time constant [s] for filtering the derivative of the yaw rate (yaw acceleration).
+    // Kept short: the MK100 IPB already HW-conditions yaw (RMS ~0.1-0.2 deg/s), so heavy
+    // smoothing is unnecessary and would add lag to this leading-indicator signal.
+    // Diagnostic only for now: yaw acceleration is computed and logged, not yet used in control.
+    float yawAccelFilterTime = 0.012f;
+
 
     // --- KINEMATIC GAINS (YAW) ---
 

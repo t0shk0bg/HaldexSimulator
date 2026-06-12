@@ -8,11 +8,11 @@ void sendHaldexTelemetryHeader() {
     printf("LOCK_PCT,SLIP_DEV,CORNER,SLIP_MPS,REAR_OVRRN,ABS_FADE,DT,TORQUE_NM,"
            "CONF,GRIP,BRAKE_P,BASE_LOCK,PRO_LOCK,REACT_LOCK,BAL_ADJ,"
            "SPD_KMH,WFL,WFR,WRL,WRR,THROT,BRAKE,STEER,GEAR,TORQ_ACT,"
-           "TORQ_REQ,MODE,ABS,ASR,ESC,LC,KD,BRAKEP2,YAW,LAT_G,LONG_G,ESC_OFF\n");
+           "TORQ_REQ,MODE,ABS,ASR,ESC,LC,KD,BRAKEP2,YAW,LAT_G,LONG_G,ESC_OFF,YAW_ACC\n");
 }
 
 void sendHaldexTelemetry(float safeDt) {
-    printf("%.1f,%.4f,%d,%.3f,%.3f,%.1f,%.4f,%.1f,%.2f,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%d,%.1f,%d,%.1f,%.1f,%d,%d,%d,%d,%d,%d,%.1f,%.1f,%.2f,%.2f,%d\n",
+    printf("%.1f,%.4f,%d,%.3f,%.3f,%.1f,%.4f,%.1f,%.2f,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%d,%.1f,%d,%.1f,%.1f,%d,%d,%d,%d,%d,%d,%.1f,%.1f,%.2f,%.2f,%d,%.3f\n",
            finalHaldexOutput.targetLockPct,                   // 1
            stateEstimationLayer.chassisSlipDeviationRadS,     // 2
            stateEstimationLayer.cornerEntryPredicted ? 1 : 0, // 3
@@ -49,6 +49,7 @@ void sendHaldexTelemetry(float safeDt) {
            rawCanInput.yawRateDegS,                           // 34
            rawCanInput.lateralAccelG,                         // 35
            rawCanInput.longitudinalAccelG,                    // 36
-           rawCanInput.escOff ? 1 : 0                         // 37
+           rawCanInput.escOff ? 1 : 0,                        // 37
+           stateEstimationLayer.yawAccelRadS2                 // 38
     );
 }
