@@ -25,14 +25,21 @@ TEST_F(LockCalculationTest, BaseLockMaxAtZeroSpeed) {
 
 // wheel_torque = 0 → normalized = 0 → torque lock = 0%
 TEST_F(LockCalculationTest, TorqueLockZeroAtNoTorque) {
-    EXPECT_FLOAT_EQ(calculateFeedforwardTorqueLock(0.0f), 0.0f);
+    EXPECT_FLOAT_EQ(calculateFeedforwardTorqueLock(0.0f, 0.0f, 0.0f), 0.0f);
 }
 
-// wheel_torque = maxWheelTorque → normalized = 1.0 → lock = throttleProactiveGain (60%)
+// wheel_torque = maxWheelTorque, actual == requested → scaling = 1.0 → lock = throttleProactiveGain (60%)
 TEST_F(LockCalculationTest, TorqueLockMaxAtFullTorque) {
     // physConfig.maxWheelTorque is computed by setupVehiclePhysics
     // maxWheelTorque = max(fd1Max, fd2Max) ≈ 5264 Nm
-    EXPECT_NEAR(calculateFeedforwardTorqueLock(physConfig.maxWheelTorque), 60.0f, 0.01f);
+    // requested == actual (100/100) exercises the act/req scaling path with factor 1.0
+    EXPECT_NEAR(calculateFeedforwardTorqueLock(physConfig.maxWheelTorque, 100.0f, 100.0f), 60.0f, 0.01f);
+}
+
+// actual < requested → scaling = act/req → lock is reduced proportionally
+TEST_F(LockCalculationTest, TorqueLockHalvedWhenActualBelowRequested) {
+    // base = 60%, requested = 300, actual = 150 → act/req = 0.5 → 30%
+    EXPECT_NEAR(calculateFeedforwardTorqueLock(physConfig.maxWheelTorque, 300.0f, 150.0f), 30.0f, 0.01f);
 }
 
 // V >= steeringReductionLowSpeedThreshold (5.556 m/s) → factor = 1.0 (no degradation)

@@ -318,17 +318,15 @@ float calculateBaseSpeedLock(float speedMps) {
     return activeConfig().baseLockLowSpeed * (1.0f - std::pow(t, activeConfig().baseLockSpeedExponent));
 }
 
-float calculateFeedforwardTorqueLock(float wheelTorqueNm) {
+float calculateFeedforwardTorqueLock(float wheelTorqueNm, float requestedTorqueNm, float actualTorqueSumNm) {
     float normalized = wheelTorqueNm / std::max(10.0f, physConfig.maxWheelTorque);
     float base = clamp(normalized * activeConfig().throttleProactiveGain, 0.0f, activeConfig().throttleProactiveGain);
-    float req = rawCanInput.filteredRequestedTorqueNm;
-    float act = rawCanInput.actualTorqueSumNm;
 
-    if (req < 20.0f) {
+    if (requestedTorqueNm < 20.0f) {
         return base;
     }
 
-    return base * clamp(act / req, 0.0f, 1.0f);
+    return base * clamp(actualTorqueSumNm / requestedTorqueNm, 0.0f, 1.0f);
 }
 
 float calculateLateralChassisBalanceAdjustment(float slipDeviationRadS, bool escOff, const HaldexControlConfig& cfg, float rearOverrunSlipMps) {
@@ -376,7 +374,7 @@ float calculateParkingDegradation(float V, float steeringAngleRad) {
 
 float calculatePredictiveLocks(float V) {
     stateEstimationLayer.baseSpeedLock = calculateBaseSpeedLock(V);
-    stateEstimationLayer.proactiveTorqueLock = calculateFeedforwardTorqueLock(stateEstimationLayer.anticipatedWheelTorqueNm);
+    stateEstimationLayer.proactiveTorqueLock = calculateFeedforwardTorqueLock(stateEstimationLayer.anticipatedWheelTorqueNm, rawCanInput.filteredRequestedTorqueNm, rawCanInput.actualTorqueSumNm);
     float feedforwardLock = clamp(stateEstimationLayer.baseSpeedLock + stateEstimationLayer.proactiveTorqueLock, 0.0f, activeConfig().maxFeedforwardLockCap);
 
     stateEstimationLayer.chassisBalanceAdjustment = calculateLateralChassisBalanceAdjustment(stateEstimationLayer.chassisSlipDeviationRadS, rawCanInput.escOff, activeConfig(), stateEstimationLayer.rearOverrunSlipMps);
