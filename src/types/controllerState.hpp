@@ -44,6 +44,7 @@ struct StateEstimationLayer {
     float dynamicSlipGain = 0.0f;
     float steeringRateRadS = 0.0f;
     float yawAccelRadS2 = 0.0f;
+    float kinematicYawConfidence = 1.0f;
 
     // Telemetry cache
     float baseSpeedLock = 0.0f;

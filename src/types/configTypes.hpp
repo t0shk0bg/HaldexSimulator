@@ -25,8 +25,10 @@ struct HaldexControlConfig {
     float throttleProactiveGain = 60.0f;
 
     // Reactive slip gain [%/(m/s)]. For every 1 m/s front/rear wheel difference
-    // 12% lock is added (before grip scaling and the cap).
-    float slipReactiveGain = 12.0f;
+    // 14% lock is added (before grip scaling and the cap). Raised from 12 to restore
+    // reactive authority after steering-geometry slip compensation removes the false
+    // (turn-induced) component from the front/rear difference.
+    float slipReactiveGain = 14.0f;
 
     // Steering system ratio [column/tire].
     // Converts the steering wheel angle into the real front tire angle for the kinematic yaw model.
@@ -54,9 +56,11 @@ struct HaldexControlConfig {
 
     // --- SLIP SENSITIVITY TUNING ---
 
-    // Minimum front/rear wheel speed difference [m/s = 5 cm/s] to activate
+    // Minimum front/rear wheel speed difference [m/s = 3 cm/s] to activate
     // the reactive slip component. Below the threshold — zero contribution (deadband).
-    float slipTriggerThresholdMps = 0.05f;
+    // Lowered from 0.05 to 0.03: with steering-geometry compensation the signal no longer
+    // carries a turn-induced false floor, so real slip can be caught earlier.
+    float slipTriggerThresholdMps = 0.03f;
 
     // Minimum multiplier of slipReactiveGain at low wheelDataConfidence or weak grip.
     // Does not allow the reactive lock to drop below 40% of the nominal value.
@@ -65,6 +69,28 @@ struct HaldexControlConfig {
     // Maximum multiplier of slipReactiveGain with an excellent signal and high grip.
     // At 100% confidence — up to 150% of the nominal slip gain.
     float slipGainMultiplierMax = 1.50f;
+
+
+    // --- STEERING-GEOMETRY SLIP COMPENSATION ---
+
+    // In a turn the front axle travels a larger radius than the rear, so the front wheels
+    // spin faster by sec(tire angle) even with perfect grip. Without compensation this
+    // geometric difference reads as false slip. When enabled, the expected geometric front
+    // speed is subtracted before declaring slip. false = legacy raw avgFront - avgRear.
+    bool steeringSlipCompensationEnabled = true;
+
+    // Clamp on the tire steer angle [rad] used in the sec() compensation (~40 deg).
+    // Bounds the worst-case correction (sec is bounded to ~1.31) and guards cos() near zero.
+    float slipCompMaxTireAngleRad = 0.70f;
+
+    // Below this expected yaw rate [rad/s] the kinematic yaw confidence defaults to 1.0
+    // (full compensation): at near-zero expected yaw the geometric correction is negligible
+    // and the yaw ratio is ill-conditioned.
+    float slipCompMinExpectedYawRadS = 0.05f;
+
+    // Lower bound on the kinematic yaw confidence c. 1.0 disables the understeer fade
+    // (pure geometric compensation, "B1"); 0.0 allows full fade under understeer ("B2").
+    float slipCompYawConfidenceFloor = 0.0f;
 
 
     // --- ANTI-WINDUP BUDGETS AND LIMITS IN % ---

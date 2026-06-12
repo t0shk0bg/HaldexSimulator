@@ -128,6 +128,7 @@ setupHaldexControl({ calib.configs[NORMAL], calib.configs[SPORT] });
 | Base lock              | `baseLockLowSpeed`, `baseLockHighSpeedCutMps`                 |
 | Proactive / throttle   | `throttleProactiveGain`, `maxFeedforwardLockCap`              |
 | Reactive slip          | `slipReactiveGain`, `slipTriggerThresholdMps`                 |
+| Slip compensation      | `steeringSlipCompensationEnabled`, `slipCompYawConfidenceFloor` |
 | Lateral dynamics       | `chassisBalanceGain`, `balanceUndersteerThresholdRadS`        |
 | Slew rate              | `maxLockSlewRateUp`, `maxLockSlewRateDown`                    |
 | ABS behaviour          | `absMaxFloorRatio`, `absFadeTauS`                             |

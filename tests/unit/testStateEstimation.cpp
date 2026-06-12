@@ -1,6 +1,10 @@
 #include "core/haldexController.hpp"
 
+#include <cmath>
 #include <gtest/gtest.h>
+
+// Steering ratio used to convert the tire angle in the tests into a column angle (config default).
+static constexpr float kTestSteeringRatio = 14.5f;
 
 class StateEstimationTest : public ::testing::Test {
   protected:
@@ -69,6 +73,113 @@ TEST_F(StateEstimationTest, ReactiveSlipDirectionality) {
     estimateReactiveSlip(rawCanInput, processedSignalsLayer, stateEstimationLayer, 2.0f);
     EXPECT_FLOAT_EQ(stateEstimationLayer.frontRearSlipMps, 0.0f);
     EXPECT_GT(stateEstimationLayer.rearOverrunSlipMps, 0.0f);
+}
+
+// Helper: set all four wheels valid and assign front/rear pair speeds [m/s].
+static void setWheels(float front, float rear) {
+    for (int i = 0; i < 4; i++) {
+        processedSignalsLayer.wheelValid[i] = true;
+    }
+    processedSignalsLayer.wheelSpeedsMps[0] = front;
+    processedSignalsLayer.wheelSpeedsMps[1] = front;
+    processedSignalsLayer.wheelSpeedsMps[2] = rear;
+    processedSignalsLayer.wheelSpeedsMps[3] = rear;
+}
+
+// Pure geometric turn (front = rear / cos δ, perfect grip): compensation removes it → slip ≈ 0.
+TEST_F(StateEstimationTest, SlipCompensatedAwayInDryTurn) {
+    rawCanInput.escOff = true; // wheelDataConfidence = 1.0, isolate compensation
+    float tireAngle = 0.40f;
+    processedSignalsLayer.steeringAngleRad = tireAngle * kTestSteeringRatio;
+    float rear = 10.0f;
+    setWheels(rear / std::cos(tireAngle), rear);
+    // kinematicYawConfidence defaults to 1.0 → full geometric compensation
+    estimateReactiveSlip(rawCanInput, processedSignalsLayer, stateEstimationLayer, 12.0f);
+    EXPECT_NEAR(stateEstimationLayer.frontRearSlipMps, 0.0f, 0.01f);
+}
+
+// Real slip on top of the geometry survives compensation.
+TEST_F(StateEstimationTest, RealSlipSurvivesCompensation) {
+    rawCanInput.escOff = true;
+    float tireAngle = 0.40f;
+    processedSignalsLayer.steeringAngleRad = tireAngle * kTestSteeringRatio;
+    float rear = 10.0f;
+    setWheels(rear / std::cos(tireAngle) + 1.0f, rear); // geometry + 1 m/s genuine slip
+    estimateReactiveSlip(rawCanInput, processedSignalsLayer, stateEstimationLayer, 12.0f);
+    EXPECT_NEAR(stateEstimationLayer.frontRearSlipMps, 1.0f, 0.02f);
+}
+
+// Symmetric compensation: a pure geometric turn leaves rearOverrun at exactly 0 too.
+TEST_F(StateEstimationTest, RearOverrunZeroInPureGeometricTurn) {
+    rawCanInput.escOff = true;
+    float tireAngle = 0.40f;
+    processedSignalsLayer.steeringAngleRad = tireAngle * kTestSteeringRatio;
+    float rear = 10.0f;
+    setWheels(rear / std::cos(tireAngle), rear);
+    estimateReactiveSlip(rawCanInput, processedSignalsLayer, stateEstimationLayer, 12.0f);
+    EXPECT_NEAR(stateEstimationLayer.frontRearSlipMps, 0.0f, 0.01f);
+    EXPECT_NEAR(stateEstimationLayer.rearOverrunSlipMps, 0.0f, 0.01f);
+}
+
+// Lower confidence fades the geometric subtraction → more residual slip is detected.
+TEST_F(StateEstimationTest, B2FadesCompensationUnderUndersteer) {
+    rawCanInput.escOff = true;
+    float tireAngle = 0.40f;
+    processedSignalsLayer.steeringAngleRad = tireAngle * kTestSteeringRatio;
+    float rear = 10.0f;
+    setWheels(rear / std::cos(tireAngle), rear); // pure geometry
+
+    stateEstimationLayer.kinematicYawConfidence = 1.0f;
+    estimateReactiveSlip(rawCanInput, processedSignalsLayer, stateEstimationLayer, 12.0f);
+    float slipFull = stateEstimationLayer.frontRearSlipMps;
+
+    stateEstimationLayer.kinematicYawConfidence = 0.5f; // understeer fade
+    estimateReactiveSlip(rawCanInput, processedSignalsLayer, stateEstimationLayer, 12.0f);
+    float slipFaded = stateEstimationLayer.frontRearSlipMps;
+
+    EXPECT_GT(slipFaded, slipFull + 0.05f);
+}
+
+// Opposite-sign yaw (spin/countersteer) drives the signed confidence to the floor → raw fallback.
+TEST_F(StateEstimationTest, CompensationFallsBackOnOppositeYaw) {
+    processedSignalsLayer.steeringAngleRad = 3.0f; // positive → expected yaw positive
+    processedSignalsLayer.yawRateRadS = -0.8f;     // car yaws the other way
+    filterState.laggedExpectedYawRadS = 0.5f;      // positive lagged reference
+    estimateSteeringAndYaw(processedSignalsLayer, filterState, stateEstimationLayer, 15.0f, 0.01f);
+    EXPECT_FLOAT_EQ(stateEstimationLayer.kinematicYawConfidence, activeConfig().slipCompYawConfidenceFloor);
+}
+
+// Below the chassis-dynamics speed the lagged yaw is frozen → confidence is forced to 1.0.
+TEST_F(StateEstimationTest, ConfidenceOneAtLowSpeed) {
+    processedSignalsLayer.steeringAngleRad = 3.0f;
+    processedSignalsLayer.yawRateRadS = -0.8f; // would yield the floor if it were computed
+    filterState.laggedExpectedYawRadS = 0.5f;
+    estimateSteeringAndYaw(processedSignalsLayer, filterState, stateEstimationLayer, 3.0f, 0.01f); // V < 4.16
+    EXPECT_FLOAT_EQ(stateEstimationLayer.kinematicYawConfidence, 1.0f);
+}
+
+// Master switch off → legacy raw avgFront - avgRear (geometry NOT removed).
+TEST_F(StateEstimationTest, CompensationDisabledIsLegacy) {
+    HaldexControlConfig cfg;
+    cfg.steeringSlipCompensationEnabled = false;
+    setupHaldexControl({cfg});
+
+    rawCanInput.escOff = true;
+    float tireAngle = 0.40f;
+    processedSignalsLayer.steeringAngleRad = tireAngle * kTestSteeringRatio;
+    float rear = 10.0f;
+    float front = rear / std::cos(tireAngle);
+    setWheels(front, rear);
+    estimateReactiveSlip(rawCanInput, processedSignalsLayer, stateEstimationLayer, 12.0f);
+    EXPECT_NEAR(stateEstimationLayer.frontRearSlipMps, front - rear, 0.02f);
+}
+
+// Regression: the raised slipReactiveGain default (14) flows into dynamicSlipGain at zero load.
+TEST_F(StateEstimationTest, DynamicSlipGainReflectsRaisedDefault) {
+    setWheels(10.0f, 10.0f);
+    rawCanInput.longitudinalAccelG = 0.0f; // loadTransferMultiplier = 1.0
+    estimateReactiveSlip(rawCanInput, processedSignalsLayer, stateEstimationLayer, 12.0f);
+    EXPECT_NEAR(stateEstimationLayer.dynamicSlipGain, 14.0f, 0.01f);
 }
 
 // When escOff = true → tireGrip = 1.0 regardless of how much G load there is

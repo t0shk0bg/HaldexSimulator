@@ -18,7 +18,7 @@ int main() {
 
     // --- SPORT: Slip sensitivity ---
     sportCfg.parkingDeactivationAngleRad = 0.20f;
-    sportCfg.slipGainMultiplierMax = 2.00f;
+    sportCfg.slipGainMultiplierMax = 1.71f;
     sportCfg.reactiveMinGripFloor = 0.08f;
     sportCfg.predictiveLockGripFloor = 0.05f;
 

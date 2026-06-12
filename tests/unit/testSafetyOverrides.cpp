@@ -1,5 +1,6 @@
 #include "core/haldexController.hpp"
 
+#include <cmath>
 #include <gtest/gtest.h>
 
 class SafetyOverridesTest : public ::testing::Test {
@@ -218,4 +219,36 @@ TEST_F(SafetyOverridesTest, ForwardReactiveCapUnchangedAt50Pct) {
 
     haldexControllerExecutionTask(dt);
     EXPECT_LE(stateEstimationLayer.reactiveSlipLock, 50.0f);
+}
+
+// Low-speed tight turn: a purely geometric front/rear difference must NOT read as slip
+// (compensated below threshold → parking degradation kept), while real spin on top must.
+TEST_F(SafetyOverridesTest, GeometricTurnDoesNotBypassParkingButRealSlipDoes) {
+    stateEstimationLayer = StateEstimationLayer{};
+    rawCanInput.gear = 2;
+    rawCanInput.vehicleSpeedKmh = 10.8f; // ~3.0 m/s, inside the low-speed compensation window
+
+    const float degToRad = 0.0174532925f;
+    float tireAngle = 0.45f;
+    rawCanInput.steeringAngleDeg = tireAngle * 14.5f / degToRad; // column degrees
+    float rearKmh = 10.8f;
+    float frontGeomKmh = rearKmh / std::cos(tireAngle); // pure geometry, perfect grip
+
+    // Scenario A: only the geometric difference (+ sensor noise to keep wheels valid)
+    for (int i = 0; i < 60; i++) {
+        float n = (i % 2 == 0) ? 0.15f : -0.15f;
+        rawCanInput.wheelSpeedFl = rawCanInput.wheelSpeedFr = frontGeomKmh + n;
+        rawCanInput.wheelSpeedRl = rawCanInput.wheelSpeedRr = rearKmh + n;
+        haldexControllerExecutionTask(dt);
+    }
+    EXPECT_LT(stateEstimationLayer.frontRearSlipMps, activeConfig().slipTriggerThresholdMps);
+
+    // Scenario B: real front spin (+6 km/h ≈ 1.7 m/s) on top of the same geometry
+    for (int i = 0; i < 60; i++) {
+        float n = (i % 2 == 0) ? 0.15f : -0.15f;
+        rawCanInput.wheelSpeedFl = rawCanInput.wheelSpeedFr = frontGeomKmh + 6.0f + n;
+        rawCanInput.wheelSpeedRl = rawCanInput.wheelSpeedRr = rearKmh + n;
+        haldexControllerExecutionTask(dt);
+    }
+    EXPECT_GT(stateEstimationLayer.frontRearSlipMps, activeConfig().slipTriggerThresholdMps);
 }

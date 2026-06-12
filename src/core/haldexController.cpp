@@ -214,6 +214,19 @@ void estimateSteeringAndYaw(const SignalProcessingLayer& processed, FilterState&
     state.chassisSlipDeviationRadS = calculateChassisSlipDeviation(fState.laggedExpectedYawRadS, processed.yawRateRadS, V, processed.steeringAngleRad);
     bool chassisOk = validateChassisResponse(state.steeringRateRadS, processed.yawRateRadS, fState, V);
 
+    // Confidence in the kinematic steering-geometry model, used to fade slip compensation.
+    // Below the chassis-dynamics speed the lagged yaw is frozen, so trust geometry fully.
+    // Signed ratio: same-sign yaw → in [floor, 1]; opposite-sign yaw (spin/countersteer) →
+    // negative → clamped to the floor, falling back to the raw front/rear difference.
+    if (V < kChassisDynamicsMinSpeedMps) {
+        state.kinematicYawConfidence = 1.0f;
+    } else {
+        float expSigned = fState.laggedExpectedYawRadS;
+        state.kinematicYawConfidence = (std::abs(expSigned) < activeConfig().slipCompMinExpectedYawRadS)
+            ? 1.0f
+            : clamp(processed.yawRateRadS / expSigned, activeConfig().slipCompYawConfidenceFloor, 1.0f);
+    }
+
     state.cornerEntryPredicted = steeringTrigger && chassisOk;
 }
 
@@ -260,8 +273,21 @@ void estimateReactiveSlip(const CanInputLayer& input, const SignalProcessingLaye
     } else {
         float avgFront = sumFront / cntFront;
         float avgRear = sumRear / cntRear;
-        state.frontRearSlipMps = std::max(0.0f, avgFront - avgRear);
-        state.rearOverrunSlipMps = std::max(0.0f, avgRear - avgFront);
+
+        if (activeConfig().steeringSlipCompensationEnabled) {
+            // In a turn the front axle runs faster than the rear by sec(tire angle).
+            // Subtract this geometric component (faded by the kinematic yaw confidence)
+            // so only genuine traction slip remains. A single factor r and its reciprocal
+            // keep frontRear/rearOverrun mutually exclusive, as in the raw case.
+            float tireAngle = std::min(std::abs(processed.steeringAngleRad) / activeConfig().steeringRatio, activeConfig().slipCompMaxTireAngleRad);
+            float secMinus = (1.0f / std::cos(tireAngle)) - 1.0f;
+            float r = 1.0f + secMinus * state.kinematicYawConfidence;
+            state.frontRearSlipMps = std::max(0.0f, avgFront - avgRear * r);
+            state.rearOverrunSlipMps = std::max(0.0f, avgRear - avgFront / r);
+        } else {
+            state.frontRearSlipMps = std::max(0.0f, avgFront - avgRear);
+            state.rearOverrunSlipMps = std::max(0.0f, avgRear - avgFront);
+        }
     }
 
     if (input.escOff) {
@@ -488,6 +514,9 @@ void haldexControllerExecutionTask(float dtSeconds) {
         estimateLateralDynamics(rawCanInput, physConfig, processedSignalsLayer, stateEstimationLayer, V);
         lockAccumulator = calculatePredictiveLocks(V);
     } else {
+        // Reverse: steering/yaw estimation is skipped, so no fresh yaw confidence is computed.
+        // Reset to 1.0 before estimateReactiveSlip so it applies pure geometric compensation (B1).
+        stateEstimationLayer.kinematicYawConfidence = 1.0f;
         estimateWheelTorque(rawCanInput, physConfig, stateEstimationLayer);
         estimateReactiveSlip(rawCanInput, processedSignalsLayer, stateEstimationLayer, V);
         estimateLateralDynamics(rawCanInput, physConfig, processedSignalsLayer, stateEstimationLayer, V);
