@@ -66,7 +66,7 @@ inline bool isOversteerActive(float slipDeviationRadS) {
 
 float calculateBaseSpeedLock(float speedMps);
 float calculateFeedforwardTorqueLock(float wheelTorqueNm, float requestedTorqueNm, float actualTorqueSumNm);
-float calculateLateralChassisBalanceAdjustment(float slipDeviationRadS, bool escOff, const HaldexControlConfig& cfg, float rearOverrunSlipMps);
+float calculateLateralChassisBalanceAdjustment(float slipDeviationRadS, bool escOff, float rearOverrunSlipMps);
 float calculateParkingDegradation(float V, float steeringAngleRad);
 float calculateOutputAttenuation(const CanInputLayer& input);
 float calculatePredictiveLocks(float V);

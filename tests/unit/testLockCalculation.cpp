@@ -52,11 +52,9 @@ TEST_F(LockCalculationTest, ParkingDegradationInactiveAboveSpeedThreshold) {
 TEST_F(LockCalculationTest, ChassisBalanceUndersteerAddsLock) {
     // deviation = 0.2 rad/s, threshold = 0.0523
     // raw_delta = 0.1477 rad/s → 8.46 deg/s → gain=2.0 → +16.93%, capped to 30%
-    const HaldexControlConfig& cfg = activeConfig();
-    float adjustment = calculateLateralChassisBalanceAdjustment(
-        0.2f, false, cfg, 0.0f);
+    float adjustment = calculateLateralChassisBalanceAdjustment(0.2f, false, 0.0f);
     EXPECT_GT(adjustment, 0.0f);
-    EXPECT_LE(adjustment, cfg.balanceUndersteerMaxLock);
+    EXPECT_LE(adjustment, activeConfig().balanceUndersteerMaxLock);
 }
 
 // slipDeviation = -0.12 rad/s (< -0.0698 threshold) → oversteer active
@@ -119,9 +117,7 @@ TEST_F(LockCalculationTest, CornerEntryBoostActiveWhenOversteerEscOn) {
 TEST_F(LockCalculationTest, ChassisBalanceOversteerReleasesLock) {
     // deviation = -0.2 rad/s, threshold = -0.0698
     // raw_delta = 0.1302 rad/s → 7.46 deg/s → gain=2.0 → -14.92%, escOff=false
-    const HaldexControlConfig& cfg = activeConfig();
-    float adjustment = calculateLateralChassisBalanceAdjustment(
-        -0.2f, false, cfg, 0.0f);
+    float adjustment = calculateLateralChassisBalanceAdjustment(-0.2f, false, 0.0f);
     EXPECT_LT(adjustment, 0.0f);
-    EXPECT_GE(adjustment, -cfg.balanceOversteerMaxRelease);
+    EXPECT_GE(adjustment, -activeConfig().balanceOversteerMaxRelease);
 }

@@ -355,14 +355,14 @@ float calculateFeedforwardTorqueLock(float wheelTorqueNm, float requestedTorqueN
     return base * clamp(actualTorqueSumNm / requestedTorqueNm, 0.0f, 1.0f);
 }
 
-float calculateLateralChassisBalanceAdjustment(float slipDeviationRadS, bool escOff, const HaldexControlConfig& cfg, float rearOverrunSlipMps) {
+float calculateLateralChassisBalanceAdjustment(float slipDeviationRadS, bool escOff, float rearOverrunSlipMps) {
     const float radToDeg = 57.29578f;
 
-    if (slipDeviationRadS > cfg.balanceUndersteerThresholdRadS) {
-        float rawUndersteerDelta = slipDeviationRadS - cfg.balanceUndersteerThresholdRadS;
+    if (slipDeviationRadS > activeConfig().balanceUndersteerThresholdRadS) {
+        float rawUndersteerDelta = slipDeviationRadS - activeConfig().balanceUndersteerThresholdRadS;
         float deviationDegS = rawUndersteerDelta * radToDeg;
 
-        return clamp(deviationDegS * activeConfig().chassisBalanceGain, 0.0f, cfg.balanceUndersteerMaxLock);
+        return clamp(deviationDegS * activeConfig().chassisBalanceGain, 0.0f, activeConfig().balanceUndersteerMaxLock);
     }
 
     if (isOversteerActive(slipDeviationRadS)) {
@@ -370,12 +370,12 @@ float calculateLateralChassisBalanceAdjustment(float slipDeviationRadS, bool esc
             return 0.0f;
         }
 
-        float rawOversteerDelta = std::abs(slipDeviationRadS) - std::abs(cfg.balanceOversteerThresholdRadS);
+        float rawOversteerDelta = std::abs(slipDeviationRadS) - std::abs(activeConfig().balanceOversteerThresholdRadS);
         float deviationDegS = rawOversteerDelta * radToDeg;
-        bool wheelConfirms = rearOverrunSlipMps > cfg.rearOverrunSlipThresholdMps;
-        float gain = wheelConfirms ? cfg.oversteerDualConfirmGain : 1.0f;
+        bool wheelConfirms = rearOverrunSlipMps > activeConfig().rearOverrunSlipThresholdMps;
+        float gain = wheelConfirms ? activeConfig().oversteerDualConfirmGain : 1.0f;
 
-        return -clamp(deviationDegS * activeConfig().chassisBalanceGain * gain, 0.0f, cfg.balanceOversteerMaxRelease);
+        return -clamp(deviationDegS * activeConfig().chassisBalanceGain * gain, 0.0f, activeConfig().balanceOversteerMaxRelease);
     }
 
     return 0.0f;
@@ -403,7 +403,7 @@ float calculatePredictiveLocks(float V) {
     stateEstimationLayer.proactiveTorqueLock = calculateFeedforwardTorqueLock(stateEstimationLayer.anticipatedWheelTorqueNm, rawCanInput.filteredRequestedTorqueNm, rawCanInput.actualTorqueSumNm);
     float feedforwardLock = clamp(stateEstimationLayer.baseSpeedLock + stateEstimationLayer.proactiveTorqueLock, 0.0f, activeConfig().maxFeedforwardLockCap);
 
-    stateEstimationLayer.chassisBalanceAdjustment = calculateLateralChassisBalanceAdjustment(stateEstimationLayer.chassisSlipDeviationRadS, rawCanInput.escOff, activeConfig(), stateEstimationLayer.rearOverrunSlipMps);
+    stateEstimationLayer.chassisBalanceAdjustment = calculateLateralChassisBalanceAdjustment(stateEstimationLayer.chassisSlipDeviationRadS, rawCanInput.escOff, stateEstimationLayer.rearOverrunSlipMps);
     float lateralDynamicLock = stateEstimationLayer.lateralFeedbackLock + stateEstimationLayer.chassisBalanceAdjustment;
     bool oversteerEscOff = isOversteerActive(stateEstimationLayer.chassisSlipDeviationRadS) && rawCanInput.escOff;
 
