@@ -45,7 +45,8 @@ struct VehiclePhysicsConfig {
     float tireMaxLongG = 0.95f;
 
     // Maximum wheel torque [Nm]. Filled automatically by setupVehiclePhysics()
-    // as: engineMaxTorque × max(gearRatios) × finalDrive1 × finalDrive2 × drivetrainEfficiency.
+    // as the larger of two drivetrain paths: engineMaxTorque × drivetrainEfficiency ×
+    // max(gearRatios[1] × finalDrive1, gearRatios[5] × finalDrive2).
     // Used to normalize anticipatedWheelTorqueNm to the 0–1 range.
     float maxWheelTorque = 0.0f;
 };

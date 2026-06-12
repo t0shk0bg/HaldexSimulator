@@ -222,9 +222,7 @@ void estimateSteeringAndYaw(const CanInputLayer& input, const SignalProcessingLa
         state.kinematicYawConfidence = 1.0f;
     } else {
         float expSigned = fState.laggedExpectedYawRadS;
-        state.kinematicYawConfidence = (std::abs(expSigned) < activeConfig().slipCompMinExpectedYawRadS)
-            ? 1.0f
-            : clamp(processed.yawRateRadS / expSigned, activeConfig().slipCompYawConfidenceFloor, 1.0f);
+        state.kinematicYawConfidence = (std::abs(expSigned) < activeConfig().slipCompMinExpectedYawRadS) ? 1.0f : clamp(processed.yawRateRadS / expSigned, activeConfig().slipCompYawConfidenceFloor, 1.0f);
     }
 
     state.cornerEntryPredicted = steeringTrigger && chassisOk;
