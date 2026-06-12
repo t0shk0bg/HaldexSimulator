@@ -22,7 +22,7 @@ class StateEstimationTest : public ::testing::Test {
 TEST_F(StateEstimationTest, WheelTorqueZeroInNeutral) {
     rawCanInput.gear = 0;
     rawCanInput.actualTorqueSumNm = 300.0f;
-    estimateWheelTorque(rawCanInput, physConfig, stateEstimationLayer);
+    estimateWheelTorque(rawCanInput, stateEstimationLayer);
     EXPECT_FLOAT_EQ(stateEstimationLayer.anticipatedWheelTorqueNm, 0.0f);
 }
 
@@ -30,7 +30,7 @@ TEST_F(StateEstimationTest, WheelTorqueZeroInNeutral) {
 TEST_F(StateEstimationTest, WheelTorqueGear1At400Nm) {
     rawCanInput.gear = 1;
     rawCanInput.actualTorqueSumNm = 400.0f;
-    estimateWheelTorque(rawCanInput, physConfig, stateEstimationLayer);
+    estimateWheelTorque(rawCanInput, stateEstimationLayer);
     // 400 * 3.563 * 4.059 * 0.91 ≈ 5264 Nm
     EXPECT_NEAR(stateEstimationLayer.anticipatedWheelTorqueNm, 5264.0f, 20.0f);
 }
@@ -187,7 +187,7 @@ TEST_F(StateEstimationTest, TireGripAlways1WhenEscOff) {
     rawCanInput.escOff = true;
     rawCanInput.lateralAccelG = 0.9f;
     rawCanInput.longitudinalAccelG = 0.8f;
-    estimateLateralDynamics(rawCanInput, physConfig, processedSignalsLayer, stateEstimationLayer, 15.0f);
+    estimateLateralDynamics(rawCanInput, processedSignalsLayer, stateEstimationLayer, 15.0f);
     EXPECT_FLOAT_EQ(stateEstimationLayer.tireGripAvailablePct, 1.0f);
 }
 
@@ -198,7 +198,7 @@ TEST_F(StateEstimationTest, FrictionEllipseReducesGripUnderCombinedLoad) {
     rawCanInput.longitudinalAccelG = 0.5f;
     // longN = 0.5/0.95 = 0.526, latN = 0.5/1.05 = 0.476
     // grip = sqrt(1 - 0.526^2 - 0.476^2) = sqrt(0.497) ≈ 0.705
-    estimateLateralDynamics(rawCanInput, physConfig, processedSignalsLayer, stateEstimationLayer, 15.0f);
+    estimateLateralDynamics(rawCanInput, processedSignalsLayer, stateEstimationLayer, 15.0f);
     EXPECT_LT(stateEstimationLayer.tireGripAvailablePct, 1.0f);
     EXPECT_NEAR(stateEstimationLayer.tireGripAvailablePct, 0.705f, 0.02f);
 }
@@ -210,7 +210,7 @@ TEST_F(StateEstimationTest, TireGripIsZeroAtExactEllipseLimit) {
     rawCanInput.longitudinalAccelG = 0.95f; // = tireMaxLongG
     rawCanInput.lateralAccelG = 1.05f;      // = tireMaxLateralG
     // longN = 1.0, latN = 1.0 → gripSquared = -1.0 → grip = 0.0
-    estimateLateralDynamics(rawCanInput, physConfig, processedSignalsLayer, stateEstimationLayer, 15.0f);
+    estimateLateralDynamics(rawCanInput, processedSignalsLayer, stateEstimationLayer, 15.0f);
     EXPECT_FLOAT_EQ(stateEstimationLayer.tireGripAvailablePct, 0.0f);
 }
 
@@ -219,7 +219,7 @@ TEST_F(StateEstimationTest, WheelTorqueZeroWhenReverseGearSet) {
     rawCanInput.reverseGear = true;
     rawCanInput.gear = 0;
     rawCanInput.actualTorqueSumNm = 300.0f;
-    estimateWheelTorque(rawCanInput, physConfig, stateEstimationLayer);
+    estimateWheelTorque(rawCanInput, stateEstimationLayer);
     EXPECT_FLOAT_EQ(stateEstimationLayer.anticipatedWheelTorqueNm, 0.0f);
 }
 
@@ -227,7 +227,7 @@ TEST_F(StateEstimationTest, WheelTorqueZeroWhenReverseGearSet) {
 TEST_F(StateEstimationTest, WheelTorqueZeroForOutOfBoundsGear) {
     rawCanInput.gear = 8;
     rawCanInput.actualTorqueSumNm = 300.0f;
-    estimateWheelTorque(rawCanInput, physConfig, stateEstimationLayer);
+    estimateWheelTorque(rawCanInput, stateEstimationLayer);
     EXPECT_FLOAT_EQ(stateEstimationLayer.anticipatedWheelTorqueNm, 0.0f);
 }
 

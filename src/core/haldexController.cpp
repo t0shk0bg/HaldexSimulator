@@ -29,7 +29,7 @@ static float calculateChassisSlipDeviation(float laggedExpectedYawRadS, float re
 
 static float calculateKinematicExpectedYaw(float currentSteerAngleRad, float V, float longitudinalG) {
     float steeringAtTiresRad = currentSteerAngleRad / activeConfig().steeringRatio;
-    float expectedYawRadS = (steeringAtTiresRad * V) / physConfig.wheelbase;
+    float expectedYawRadS = (steeringAtTiresRad * V) / activePhysics().wheelbase;
 
     float yawGain = 1.0f + (V * activeConfig().yawGainLinearCoeff) - (V * V * activeConfig().yawGainQuadraticCoeff);
     float loadTransfer = 1.0f - (longitudinalG * 0.3f);
@@ -230,15 +230,15 @@ void estimateSteeringAndYaw(const SignalProcessingLayer& processed, FilterState&
     state.cornerEntryPredicted = steeringTrigger && chassisOk;
 }
 
-void estimateWheelTorque(const CanInputLayer& input, const VehiclePhysicsConfig& physCfg, StateEstimationLayer& state) {
+void estimateWheelTorque(const CanInputLayer& input, StateEstimationLayer& state) {
     if (input.reverseGear || input.gear <= 0 || input.gear > 7) {
         state.anticipatedWheelTorqueNm = 0.0f;
         return;
     }
 
-    float iGear = physCfg.gearRatios[input.gear];
-    float iFinal = (input.gear <= 4) ? physCfg.finalDrive1 : physCfg.finalDrive2;
-    state.anticipatedWheelTorqueNm = clamp(input.actualTorqueSumNm, 0.0f, physCfg.engineMaxTorque) * iGear * iFinal * physCfg.drivetrainEfficiency;
+    float iGear = activePhysics().gearRatios[input.gear];
+    float iFinal = (input.gear <= 4) ? activePhysics().finalDrive1 : activePhysics().finalDrive2;
+    state.anticipatedWheelTorqueNm = clamp(input.actualTorqueSumNm, 0.0f, activePhysics().engineMaxTorque) * iGear * iFinal * activePhysics().drivetrainEfficiency;
 }
 
 void estimateReactiveSlip(const CanInputLayer& input, const SignalProcessingLayer& processed, StateEstimationLayer& state, float vehicleSpeedMps) {
@@ -312,16 +312,16 @@ void estimateReactiveSlip(const CanInputLayer& input, const SignalProcessingLaye
     state.rearOverrunSlipMps *= state.wheelDataConfidence;
 }
 
-void estimateLateralDynamics(const CanInputLayer& input, const VehiclePhysicsConfig& physCfg, const SignalProcessingLayer& processed, StateEstimationLayer& state, float vehicleSpeedMps) {
+void estimateLateralDynamics(const CanInputLayer& input, const SignalProcessingLayer& processed, StateEstimationLayer& state, float vehicleSpeedMps) {
     float latGAbs = std::abs(input.lateralAccelG);
     state.lateralFeedbackLock = clamp((latGAbs / 0.8f) * 30.0f, 0.0f, 30.0f);
-    state.stabilityMarginPct = clamp(1.0f - (latGAbs / physCfg.tireMaxLateralG), 0.0f, 1.0f);
+    state.stabilityMarginPct = clamp(1.0f - (latGAbs / activePhysics().tireMaxLateralG), 0.0f, 1.0f);
 
     if (input.escOff) {
         state.tireGripAvailablePct = 1.0f;
     } else {
-        float longN = input.longitudinalAccelG / physCfg.tireMaxLongG;
-        float latN = input.lateralAccelG / physCfg.tireMaxLateralG;
+        float longN = input.longitudinalAccelG / activePhysics().tireMaxLongG;
+        float latN = input.lateralAccelG / activePhysics().tireMaxLateralG;
         float gripSquared = 1.0f - (longN * longN + latN * latN);
         state.tireGripAvailablePct = (gripSquared > 0.0f) ? std::sqrt(gripSquared) : 0.0f;
     }
@@ -345,7 +345,7 @@ float calculateBaseSpeedLock(float speedMps) {
 }
 
 float calculateFeedforwardTorqueLock(float wheelTorqueNm, float requestedTorqueNm, float actualTorqueSumNm) {
-    float normalized = wheelTorqueNm / std::max(10.0f, physConfig.maxWheelTorque);
+    float normalized = wheelTorqueNm / std::max(10.0f, activePhysics().maxWheelTorque);
     float base = clamp(normalized * activeConfig().throttleProactiveGain, 0.0f, activeConfig().throttleProactiveGain);
 
     if (requestedTorqueNm < 20.0f) {
@@ -509,17 +509,17 @@ void haldexControllerExecutionTask(float dtSeconds) {
 
     if (!rawCanInput.reverseGear) {
         estimateSteeringAndYaw(processedSignalsLayer, filterState, stateEstimationLayer, V, safeDt);
-        estimateWheelTorque(rawCanInput, physConfig, stateEstimationLayer);
+        estimateWheelTorque(rawCanInput, stateEstimationLayer);
         estimateReactiveSlip(rawCanInput, processedSignalsLayer, stateEstimationLayer, V);
-        estimateLateralDynamics(rawCanInput, physConfig, processedSignalsLayer, stateEstimationLayer, V);
+        estimateLateralDynamics(rawCanInput, processedSignalsLayer, stateEstimationLayer, V);
         lockAccumulator = calculatePredictiveLocks(V);
     } else {
         // Reverse: steering/yaw estimation is skipped, so no fresh yaw confidence is computed.
         // Reset to 1.0 before estimateReactiveSlip so it applies pure geometric compensation (B1).
         stateEstimationLayer.kinematicYawConfidence = 1.0f;
-        estimateWheelTorque(rawCanInput, physConfig, stateEstimationLayer);
+        estimateWheelTorque(rawCanInput, stateEstimationLayer);
         estimateReactiveSlip(rawCanInput, processedSignalsLayer, stateEstimationLayer, V);
-        estimateLateralDynamics(rawCanInput, physConfig, processedSignalsLayer, stateEstimationLayer, V);
+        estimateLateralDynamics(rawCanInput, processedSignalsLayer, stateEstimationLayer, V);
 
         stateEstimationLayer.baseSpeedLock = 0.0f;
         stateEstimationLayer.proactiveTorqueLock = 0.0f;

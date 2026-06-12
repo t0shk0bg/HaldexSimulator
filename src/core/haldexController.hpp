@@ -31,6 +31,10 @@ inline const HaldexControlConfig& activeConfig() {
     return calib.configs[static_cast<int>(driveMode)];
 }
 
+inline const VehiclePhysicsConfig& activePhysics() {
+    return physConfig;
+}
+
 inline float clamp(float value, float minVal, float maxVal) {
     return (value < minVal) ? minVal : ((value > maxVal) ? maxVal : value);
 }
@@ -53,9 +57,9 @@ float calculateFilteredYawAccel(float currentYawRateRadS, FilterState& fState, f
 // Dynamic state estimation
 // ----------------------------------------------------------------------------
 void estimateSteeringAndYaw(const SignalProcessingLayer& processed, FilterState& fState, StateEstimationLayer& state, float V, float dt);
-void estimateWheelTorque(const CanInputLayer& input, const VehiclePhysicsConfig& physCfg, StateEstimationLayer& state);
+void estimateWheelTorque(const CanInputLayer& input, StateEstimationLayer& state);
 void estimateReactiveSlip(const CanInputLayer& input, const SignalProcessingLayer& processed, StateEstimationLayer& state, float vehicleSpeedMps);
-void estimateLateralDynamics(const CanInputLayer& input, const VehiclePhysicsConfig& physCfg, const SignalProcessingLayer& processed, StateEstimationLayer& state, float vehicleSpeedMps);
+void estimateLateralDynamics(const CanInputLayer& input, const SignalProcessingLayer& processed, StateEstimationLayer& state, float vehicleSpeedMps);
 
 // ----------------------------------------------------------------------------
 // Lock calculation
